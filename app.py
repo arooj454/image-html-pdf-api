@@ -91,6 +91,56 @@ async def photo_to_pdf(files: list[UploadFile] = File(...)):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to convert images: {str(e)}")
+        
+# ===== NEW: GIF → JPG =====
+@app.post("/gif-to-jpg")
+async def gif_to_jpg(file: UploadFile = File(...)):
+    if not file.filename.lower().endswith(".gif"):
+        raise HTTPException(status_code=400, detail="Only GIF files allowed")
+
+    try:
+        content = await file.read()
+        img = Image.open(io.BytesIO(content)).convert("RGB")  # GIF → JPG RGB
+
+        output_stream = io.BytesIO()
+        img.save(output_stream, format="JPEG")
+        output_stream.seek(0)
+
+        filename = file.filename.replace(".gif", ".jpg")
+
+        return Response(
+            content=output_stream.getvalue(),
+            media_type="image/jpeg",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== NEW: TIFF → PNG =====
+@app.post("/tiff-to-png")
+async def tiff_to_png(file: UploadFile = File(...)):
+    if not (file.filename.lower().endswith(".tif") or file.filename.lower().endswith(".tiff")):
+        raise HTTPException(status_code=400, detail="Only TIFF files allowed")
+
+    try:
+        content = await file.read()
+        img = Image.open(io.BytesIO(content))
+
+        output_stream = io.BytesIO()
+        img.save(output_stream, format="PNG")
+        output_stream.seek(0)
+
+        filename = file.filename.rsplit(".", 1)[0] + ".png"
+
+        return Response(
+            content=output_stream.getvalue(),
+            media_type="image/png",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # ===== HTML to PDF Route =====
 @app.post("/html-to-pdf")
@@ -138,7 +188,9 @@ async def root():
             "/png-to-jpg": "Convert PNG to JPG",
             "/jpg-to-png": "Convert JPG to PNG",
             "/photo-to-pdf": "Convert images to PDF",
-            "/html-to-pdf": "Convert HTML to PDF"
+            "/html-to-pdf": "Convert HTML to PDF",
+            "/gif-to-jpg": "Convert GIF to JPG",
+            "/tiff-to-png": "Convert TIFF to PNG",
         }
     }
 
